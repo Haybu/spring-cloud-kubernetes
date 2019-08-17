@@ -17,6 +17,7 @@
 package org.springframework.cloud.kubernetes.config;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -41,6 +42,7 @@ import static org.springframework.cloud.kubernetes.config.PropertySourceUtils.ya
  *
  * @author Ioannis Canellos
  * @author Ali Shahbour
+ * @author Haytham Mohamed
  */
 public class ConfigMapPropertySource extends MapPropertySource {
 
@@ -89,35 +91,26 @@ public class ConfigMapPropertySource extends MapPropertySource {
 	private static Map<String, String> getData(KubernetesClient client, String name,
 			String namespace, Environment environment) {
 		try {
+			Map<String, String> ordered = getOrderedConfigMapSource(client, name,
+					namespace, environment);
 			Map<String, String> result = new HashMap<>();
-			ConfigMap map = StringUtils.isEmpty(namespace)
-					? client.configMaps().withName(name).get()
-					: client.configMaps().inNamespace(namespace).withName(name).get();
 
-			if (map != null) {
-				result.putAll(processAllEntries(map.getData(), environment));
+			if (ordered != null) {
+				result.putAll(processAllEntries(ordered, environment));
 			}
 
 			if (environment != null) {
 				for (String activeProfile : environment.getActiveProfiles()) {
-
 					String mapNameWithProfile = name + "-" + activeProfile;
-
-					ConfigMap mapWithProfile = StringUtils.isEmpty(namespace)
-							? client.configMaps().withName(mapNameWithProfile).get()
-							: client.configMaps().inNamespace(namespace)
-									.withName(mapNameWithProfile).get();
-
-					if (mapWithProfile != null) {
-						result.putAll(
-								processAllEntries(mapWithProfile.getData(), environment));
+					ordered = getOrderedConfigMapSource(client, mapNameWithProfile,
+							namespace, environment);
+					if (ordered != null) {
+						result.putAll(processAllEntries(ordered, environment));
 					}
-
 				}
 			}
 
 			return result;
-
 		}
 		catch (Exception e) {
 			LOG.warn("Can't read configMap with name: [" + name + "] in namespace:["
@@ -125,6 +118,19 @@ public class ConfigMapPropertySource extends MapPropertySource {
 		}
 
 		return new HashMap<>();
+	}
+
+	private static Map<String, String> getOrderedConfigMapSource(KubernetesClient client,
+			String name, String namespace, Environment environment) {
+		Map<String, String> ordered = null;
+		ConfigMap map = StringUtils.isEmpty(namespace)
+				? client.configMaps().withName(name).get()
+				: client.configMaps().inNamespace(namespace).withName(name).get();
+		if (map != null) {
+			ordered = orderPropFiles(name, map.getData(), environment);
+		}
+		return ordered;
+
 	}
 
 	private static Map<String, String> processAllEntries(Map<String, String> input,
@@ -165,22 +171,53 @@ public class ConfigMapPropertySource extends MapPropertySource {
 
 	private static Map<String, String> defaultProcessAllEntries(Map<String, String> input,
 			Environment environment) {
+		Map<String, String> all = new HashMap<>();
+		Map<String, String> temp = null;
+		Set<Entry<String, String>> entries = input.entrySet();
+		for (Entry e : entries) {
+			temp = extractProperties((String) e.getKey(), (String) e.getValue(),
+					environment);
+			if (temp != null && !temp.isEmpty()) {
+				all.putAll(temp);
+			}
+		}
+		return all;
+	}
 
-		return input.entrySet().stream()
-				.map(e -> extractProperties(e.getKey(), e.getValue(), environment))
-				.filter(m -> !m.isEmpty()).flatMap(m -> m.entrySet().stream())
-				.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+	private static Map<String, String> orderPropFiles(String configName,
+			Map<String, String> input, Environment environment) {
+		Map<String, String> ordered = new LinkedHashMap<>();
+		final String appName = environment != null
+				&& environment.getProperty("spring.application.name") != null
+						? environment.getProperty("spring.application.name") : configName;
+
+		input.keySet().stream().filter(key -> key.indexOf("application.") == 0)
+				.forEach(key -> ordered.put(key, input.get(key)));
+
+		input.keySet().stream().filter(key -> key.indexOf("application-") == 0)
+				.forEach(key -> ordered.put(key, input.get(key)));
+
+		input.keySet().stream().filter(key -> key.indexOf(appName + ".") == 0)
+				.forEach(key -> ordered.put(key, input.get(key)));
+
+		input.keySet().stream().filter(key -> key.indexOf(appName + "-") == 0)
+				.forEach(key -> ordered.put(key, input.get(key)));
+
+		input.keySet().stream()
+				.filter(key -> key.indexOf("application") < 0 && key.indexOf(appName) < 0)
+				.forEach(key -> ordered.put(key, input.get(key)));
+
+		return ordered;
 	}
 
 	private static Map<String, String> extractProperties(String resourceName,
 			String content, Environment environment) {
 
-		if (resourceName.equals(APPLICATION_YAML)
-				|| resourceName.equals(APPLICATION_YML)) {
+		if (resourceName.endsWith(".yml") || resourceName.endsWith(".yaml")) {
 			return yamlParserGenerator(environment).andThen(PROPERTIES_TO_MAP)
 					.apply(content);
 		}
-		else if (resourceName.equals(APPLICATION_PROPERTIES)) {
+		else if (resourceName.endsWith(".properties")) {
 			return KEY_VALUE_TO_PROPERTIES.andThen(PROPERTIES_TO_MAP).apply(content);
 		}
 
