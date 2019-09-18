@@ -54,6 +54,10 @@ public class ConfigMapPropertySource extends MapPropertySource {
 
 	private static final String PREFIX = "configmap";
 
+	public ConfigMapPropertySource(String name, Map<String, Object> source) {
+		super(name, source);
+	}
+
 	public ConfigMapPropertySource(KubernetesClient client, String name) {
 		this(client, name, null, (Environment) null);
 	}
@@ -133,7 +137,7 @@ public class ConfigMapPropertySource extends MapPropertySource {
 		Set<Entry<String, String>> entrySet = input.entrySet();
 		if (entrySet.size() == 1) {
 			// we handle the case where the configmap contains a single "file"
-			// in this case we don't care what the name of t he file is
+			// in this case we don't care what the name of the file is
 			Entry<String, String> singleEntry = entrySet.iterator().next();
 			String propertyName = singleEntry.getKey();
 			String propertyValue = singleEntry.getValue();

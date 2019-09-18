@@ -73,12 +73,12 @@ public class ConfigMapPropertySourceLocator implements PropertySourceLocator {
 					.determineSources();
 			CompositePropertySource composite = new CompositePropertySource(
 					"composite-configmap");
-			if (this.properties.isEnableApi()) {
+			if (this.properties.isEnableApi() && !sources.isEmpty()) {
 				sources.forEach(s -> composite.addFirstPropertySource(
 						getMapPropertySourceForSingleConfigMap(env, s)));
 			}
 
-			addPropertySourcesFromPaths(environment, composite);
+			addPropertySourcesFromPaths(env, composite);
 
 			return composite;
 		}
@@ -143,7 +143,7 @@ public class ConfigMapPropertySourceLocator implements PropertySourceLocator {
 					+ "will be ignored because no properties could be found");
 		}
 		else {
-			composite.addFirstPropertySource(new MapPropertySource(name, map));
+			composite.addFirstPropertySource(new ConfigMapPropertySource(name, map));
 		}
 	}
 

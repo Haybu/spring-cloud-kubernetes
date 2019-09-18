@@ -28,6 +28,8 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.Watch;
 import io.fabric8.kubernetes.client.Watcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.cloud.kubernetes.config.ConfigMapPropertySource;
 import org.springframework.cloud.kubernetes.config.ConfigMapPropertySourceLocator;
@@ -43,6 +45,9 @@ import org.springframework.core.env.MapPropertySource;
  * @author Nicola Ferraro
  */
 public class EventBasedConfigurationChangeDetector extends ConfigurationChangeDetector {
+
+	private static final Logger LOG = LoggerFactory
+			.getLogger(EventBasedConfigurationChangeDetector.class);
 
 	private ConfigMapPropertySourceLocator configMapPropertySourceLocator;
 
@@ -79,6 +84,9 @@ public class EventBasedConfigurationChangeDetector extends ConfigurationChangeDe
 
 							@Override
 							public void onClose(KubernetesClientException e) {
+								if (LOG.isDebugEnabled()) {
+									LOG.debug("Watcher closes due to " + e);
+								}
 							}
 						}));
 				activated = true;
@@ -104,6 +112,9 @@ public class EventBasedConfigurationChangeDetector extends ConfigurationChangeDe
 
 							@Override
 							public void onClose(KubernetesClientException e) {
+								if (LOG.isDebugEnabled()) {
+									LOG.debug("Watcher closes due to " + e);
+								}
 							}
 						}));
 				activated = true;

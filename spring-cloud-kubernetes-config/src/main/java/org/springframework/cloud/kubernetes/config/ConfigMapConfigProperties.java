@@ -74,12 +74,12 @@ public class ConfigMapConfigProperties extends AbstractConfigProperties {
 	 */
 	public List<NormalizedSource> determineSources() {
 		if (this.sources.isEmpty()) {
-			return new ArrayList<NormalizedSource>() {
-				{
-					add(new NormalizedSource(ConfigMapConfigProperties.this.name,
-							ConfigMapConfigProperties.this.namespace));
-				}
-			};
+			List<NormalizedSource> lst = new ArrayList<NormalizedSource>();
+			if (ConfigMapConfigProperties.this.name != null) {
+				lst.add(new NormalizedSource(ConfigMapConfigProperties.this.name,
+						ConfigMapConfigProperties.this.namespace));
+			}
+			return lst;
 		}
 
 		return this.sources.stream().map(s -> s.normalize(this.name, this.namespace))
