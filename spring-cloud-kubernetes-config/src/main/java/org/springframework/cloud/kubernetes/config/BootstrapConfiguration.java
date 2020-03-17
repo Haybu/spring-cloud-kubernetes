@@ -28,6 +28,7 @@ import org.springframework.cloud.kubernetes.KubernetesAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * Auto configuration that reuses Kubernetes config maps as property sources.
@@ -49,19 +50,28 @@ public class BootstrapConfiguration {
 		private KubernetesClient client;
 
 		@Bean
-		@ConditionalOnProperty(name = "spring.cloud.kubernetes.config.enabled",
-				matchIfMissing = true)
-		public ConfigMapPropertySourceLocator configMapPropertySourceLocator(
-				ConfigMapConfigProperties properties) {
-			return new ConfigMapPropertySourceLocator(this.client, properties);
-		}
-
-		@Bean
 		@ConditionalOnProperty(name = "spring.cloud.kubernetes.secrets.enabled",
 				matchIfMissing = true)
 		public SecretsPropertySourceLocator secretsPropertySourceLocator(
 				SecretsConfigProperties properties) {
 			return new SecretsPropertySourceLocator(this.client, properties);
+		}
+
+		@Bean
+		@ConditionalOnProperty(name = "spring.cloud.kubernetes.config.enabled",
+				matchIfMissing = true)
+		public ConfigMapPropertySourceLocator configMapPropertySourceLocator(
+				ConfigMapConfigProperties properties, RestTemplate restTemplate) {
+			return new ConfigMapPropertySourceLocator(this.client, properties,
+					restTemplate);
+		}
+
+		@Bean
+		@ConditionalOnProperty(
+				name = "spring.cloud.kubernetes.secrets.enable-k8s-controller",
+				matchIfMissing = true)
+		public RestTemplate restTemplate() {
+			return new RestTemplate();
 		}
 
 	}

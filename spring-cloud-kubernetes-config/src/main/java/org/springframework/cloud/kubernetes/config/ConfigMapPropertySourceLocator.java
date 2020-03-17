@@ -28,6 +28,7 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.bootstrap.config.PropertySourceLocator;
 import org.springframework.cloud.kubernetes.config.ConfigMapConfigProperties.NormalizedSource;
 import org.springframework.core.annotation.Order;
@@ -36,6 +37,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.PropertySource;
+import org.springframework.web.client.RestTemplate;
 
 import static org.springframework.cloud.kubernetes.config.ConfigUtils.getApplicationName;
 import static org.springframework.cloud.kubernetes.config.ConfigUtils.getApplicationNamespace;
@@ -58,10 +60,14 @@ public class ConfigMapPropertySourceLocator implements PropertySourceLocator {
 
 	private final ConfigMapConfigProperties properties;
 
+	private final RestTemplate restTemplate;
+
 	public ConfigMapPropertySourceLocator(KubernetesClient client,
-			ConfigMapConfigProperties properties) {
+			ConfigMapConfigProperties properties,
+			@Autowired(required = false) RestTemplate restTemplate) {
 		this.client = client;
 		this.properties = properties;
+		this.restTemplate = restTemplate;
 	}
 
 	@Override
@@ -74,8 +80,14 @@ public class ConfigMapPropertySourceLocator implements PropertySourceLocator {
 			CompositePropertySource composite = new CompositePropertySource(
 					"composite-configmap");
 			if (this.properties.isEnableApi()) {
+				LOG.debug("k8s API is enabled. configs will be obtain via API");
 				sources.forEach(s -> composite.addFirstPropertySource(
 						getMapPropertySourceForSingleConfigMap(env, s)));
+			}
+			else if (this.properties.isEnableK8sController()) {
+				LOG.debug("k8s API is disabled, configs will be obtain from controller");
+				sources.forEach(s -> composite.addFirstPropertySource(
+						getMapPropertySourceForSingleConfigMapUsingController(env, s)));
 			}
 
 			addPropertySourcesFromPaths(environment, composite);
@@ -88,12 +100,25 @@ public class ConfigMapPropertySourceLocator implements PropertySourceLocator {
 	private MapPropertySource getMapPropertySourceForSingleConfigMap(
 			ConfigurableEnvironment environment, NormalizedSource normalizedSource) {
 
-		String configurationTarget = this.properties.getConfigurationTarget();
-		return new ConfigMapPropertySource(this.client,
-				getApplicationName(environment, normalizedSource.getName(),
-						configurationTarget),
-				getApplicationNamespace(this.client, normalizedSource.getNamespace(),
-						configurationTarget),
+		String target = this.properties.getConfigurationTarget();
+		String applicationName = getApplicationName(environment,
+				normalizedSource.getName(), target);
+		String applicationNamespace = getApplicationNamespace(this.client,
+				normalizedSource.getNamespace(), target);
+		return new ConfigMapPropertySource(this.client, applicationName,
+				applicationNamespace, environment);
+	}
+
+	private MapPropertySource getMapPropertySourceForSingleConfigMapUsingController(
+			ConfigurableEnvironment environment, NormalizedSource normalizedSource) {
+
+		String target = this.properties.getConfigurationTarget();
+		String applicationName = getApplicationName(environment,
+				normalizedSource.getName(), target);
+		String applicationNamespace = getApplicationNamespace(this.client,
+				normalizedSource.getNamespace(), target);
+		return new ConfigMapPropertySource(this.client, this.restTemplate,
+				this.properties.getUri(), applicationName, applicationNamespace,
 				environment);
 	}
 

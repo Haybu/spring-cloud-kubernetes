@@ -31,6 +31,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
 
 import static org.springframework.cloud.kubernetes.config.PropertySourceUtils.KEY_VALUE_TO_PROPERTIES;
 import static org.springframework.cloud.kubernetes.config.PropertySourceUtils.PROPERTIES_TO_MAP;
@@ -76,6 +77,12 @@ public class ConfigMapPropertySource extends MapPropertySource {
 				asObjectMap(getData(client, name, namespace, environment)));
 	}
 
+	public ConfigMapPropertySource(KubernetesClient client, RestTemplate restTemplate,
+			String uri, String name, String namespace, Environment environment) {
+		super(getName(client, name, namespace), asObjectMap(
+				getDataFromController(restTemplate, uri, name, namespace, environment)));
+	}
+
 	private static String getName(KubernetesClient client, String name,
 			String namespace) {
 		return new StringBuilder().append(PREFIX)
@@ -84,6 +91,43 @@ public class ConfigMapPropertySource extends MapPropertySource {
 				.append(namespace == null || namespace.isEmpty() ? client.getNamespace()
 						: namespace)
 				.toString();
+	}
+
+	private static Map<String, String> getDataFromController(RestTemplate restTemplate,
+			String uri, String name, String namespace, Environment environment) {
+
+		String callURI = uri + "/namespace/{namespace}/name/{name}/profile/{profile}";
+		LOG.debug("callURI: " + callURI);
+
+		ConfigMapPropertySourceModel model = restTemplate.getForObject(callURI,
+				ConfigMapPropertySourceModel.class, namespace, name, "default");
+
+		LOG.debug("Configmap retrieved from controller " + model.toString());
+
+		Map<String, String> result = new HashMap<>();
+
+		if (model != null && model.getData() != null) {
+			result = model.getData();
+		}
+
+		if (environment != null) {
+			for (String activeProfile : environment.getActiveProfiles()) {
+
+				String mapNameWithProfile = name + "-" + activeProfile;
+
+				model = restTemplate.getForObject(callURI,
+						ConfigMapPropertySourceModel.class, namespace, name,
+						activeProfile);
+
+				LOG.debug("Configmap retrieved from controller " + model.toString());
+
+				if (model != null && model.getData() != null) {
+					result.putAll(processAllEntries(model.getData(), environment));
+				}
+			}
+		}
+
+		return result;
 	}
 
 	private static Map<String, String> getData(KubernetesClient client, String name,

@@ -36,6 +36,11 @@ public class ConfigMapConfigProperties extends AbstractConfigProperties {
 
 	private boolean enableApi = true;
 
+	private boolean enableK8sController = false;
+
+	// private String uri = "sck8s_config_controller.default.svc.cluster.local";
+	private String uri = "http://localhost:8080/cache/config";
+
 	private List<String> paths = new LinkedList<>();
 
 	private List<Source> sources = new LinkedList<>();
@@ -46,6 +51,14 @@ public class ConfigMapConfigProperties extends AbstractConfigProperties {
 
 	public void setEnableApi(boolean enableApi) {
 		this.enableApi = enableApi;
+	}
+
+	public boolean isEnableK8sController() {
+		return enableK8sController;
+	}
+
+	public void setEnableK8sController(boolean enableK8sController) {
+		this.enableK8sController = enableK8sController;
 	}
 
 	public List<String> getPaths() {
@@ -62,6 +75,14 @@ public class ConfigMapConfigProperties extends AbstractConfigProperties {
 
 	public void setSources(List<Source> sources) {
 		this.sources = sources;
+	}
+
+	public String getUri() {
+		return uri;
+	}
+
+	public void setUri(String uri) {
+		this.uri = uri;
 	}
 
 	/**
