@@ -39,7 +39,7 @@ public class ConfigMapConfigProperties extends AbstractConfigProperties {
 	private boolean enableK8sController = false;
 
 	// private String uri = "sck8s_config_controller.default.svc.cluster.local";
-	private String uri = "http://localhost:8080/cache/config";
+	private String uri = "http://localhost:8080/configmaps";
 
 	private List<String> paths = new LinkedList<>();
 

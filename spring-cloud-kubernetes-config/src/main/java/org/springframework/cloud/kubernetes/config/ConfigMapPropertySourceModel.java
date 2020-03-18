@@ -35,6 +35,8 @@ public class ConfigMapPropertySourceModel implements Serializable {
 
 	private Map<String, String> data;
 
+	private String namespace;
+
 	public ConfigMapPropertySourceModel() {
 	}
 
@@ -54,8 +56,8 @@ public class ConfigMapPropertySourceModel implements Serializable {
 		this.label = label;
 	}
 
-	public ConfigMapPropertySourceModel(String name, String profile, String label,
-			Map<String, String> data) {
+	public ConfigMapPropertySourceModel(String name, String namespace, String profile,
+			String label, Map<String, String> data) {
 		this.name = name;
 		this.data = data;
 		this.profile = profile;
@@ -70,6 +72,14 @@ public class ConfigMapPropertySourceModel implements Serializable {
 		this.name = name;
 	}
 
+	public String getNamespace() {
+		return namespace;
+	}
+
+	public void setNamespace(String namespace) {
+		this.namespace = namespace;
+	}
+
 	public Map<String, String> getData() {
 		return data;
 	}
@@ -81,8 +91,8 @@ public class ConfigMapPropertySourceModel implements Serializable {
 	@Override
 	public String toString() {
 		StringBuffer buffer = new StringBuffer("[");
-		buffer.append("name: " + name).append(", profile: " + profile)
-				.append(", label: " + label);
+		buffer.append("name: " + name).append(", namespace: " + namespace)
+				.append(", profile: " + profile).append(", label: " + label);
 		if (data != null && !data.isEmpty()) {
 			buffer.append(", data: [");
 			data.entrySet().stream()

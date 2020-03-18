@@ -96,17 +96,16 @@ public class ConfigMapPropertySource extends MapPropertySource {
 	private static Map<String, String> getDataFromController(RestTemplate restTemplate,
 			String uri, String name, String namespace, Environment environment) {
 
-		String callURI = uri + "/namespace/{namespace}/name/{name}/profile/{profile}";
+		String callURI = uri + "/{name}/namespaces/{namespace}/profiles/{profile}";
 		LOG.debug("callURI: " + callURI);
 
 		ConfigMapPropertySourceModel model = restTemplate.getForObject(callURI,
-				ConfigMapPropertySourceModel.class, namespace, name, "default");
-
-		LOG.debug("Configmap retrieved from controller " + model.toString());
+				ConfigMapPropertySourceModel.class, name, namespace, "default");
 
 		Map<String, String> result = new HashMap<>();
 
 		if (model != null && model.getData() != null) {
+			LOG.debug("Configmap retrieved from controller " + model.toString());
 			result = model.getData();
 		}
 
@@ -116,12 +115,11 @@ public class ConfigMapPropertySource extends MapPropertySource {
 				String mapNameWithProfile = name + "-" + activeProfile;
 
 				model = restTemplate.getForObject(callURI,
-						ConfigMapPropertySourceModel.class, namespace, name,
+						ConfigMapPropertySourceModel.class, name, namespace,
 						activeProfile);
 
-				LOG.debug("Configmap retrieved from controller " + model.toString());
-
 				if (model != null && model.getData() != null) {
+					LOG.debug("Configmap retrieved from controller " + model.toString());
 					result.putAll(processAllEntries(model.getData(), environment));
 				}
 			}
